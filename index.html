@@ -3,34 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finanzas Zen Cloud</title>
-    
-    <!-- Tailwind CSS -->
+    <title>Finanzas Zen</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Prop-types & Recharts -->
-    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
-    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
-
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Estilos -->
     <style>
         body { font-family: 'Inter', sans-serif; }
         .fade-in { animation: fadeIn 0.5s ease-in-out; }
         .slide-up { animation: slideUp 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        
-        /* Scrollbar sutil */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -39,290 +23,156 @@
 </head>
 <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Configuración Global ---
-        window.firebaseModules = { 
-            initializeApp, getAuth, signInWithPopup, GoogleAuthProvider, 
-            onAuthStateChanged, signOut, getFirestore, collection, 
-            addDoc, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc, query,
-            signInWithCustomToken, signInAnonymously
-        };
-    </script>
-
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
-        const { 
-            PieChart, Pie, Cell, ResponsiveContainer, Tooltip: RechartsTooltip, Legend,
-            BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area 
-        } = window.Recharts || {};
+        const { useState, useEffect, useMemo } = React;
 
-        // --- Iconos (SVG) ---
         const Icon = ({ path, size = 20, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
         );
         const Icons = {
             Plus: (p) => <Icon {...p} path={<><path d="M5 12h14"/><path d="M12 5v14"/></>} />,
             Dashboard: (p) => <Icon {...p} path={<><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>} />,
-            Wallet: (p) => <Icon {...p} path={<><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></>} />,
             Trash: (p) => <Icon {...p} path={<><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>} />,
-            TrendingUp: (p) => <Icon {...p} path={<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>} />,
-            LogOut: (p) => <Icon {...p} path={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>} />,
-            Google: (p) => <Icon {...p} path={<path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-16v8l6.5-4.5L11 6z"/>} />, // Placeholder icon
-            Settings: (p) => <Icon {...p} path={<><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>} />,
             List: (p) => <Icon {...p} path={<><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></>} />,
-            CreditCard: (p) => <Icon {...p} path={<rect width="20" height="14" x="2" y="5" rx="2" ry="2"/>} />,
+            User: (p) => <Icon {...p} path={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />,
+            Check: (p) => <Icon {...p} path={<path d="M20 6L9 17l-5-5"/>} />,
         };
 
-        // --- Utils ---
-        const formatMoney = (amount, currency) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: currency, maximumFractionDigits: 0 }).format(amount);
-        
+        const formatMoney = (amount, currency) => new Intl.NumberFormat('es-AR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
         const DEFAULT_CATEGORIES = ["Comida", "Transporte", "Hogar", "Servicios", "Entretenimiento", "Salud", "Educación"];
         const PAYMENT_METHODS = ["Efectivo", "Débito", "Crédito", "Transferencia", "QR", "Otro"];
 
-        // --- App Component ---
         function App() {
-            const [user, setUser] = useState(null);
             const [view, setView] = useState('dashboard');
             const [transactions, setTransactions] = useState([]);
             const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-            const [loading, setLoading] = useState(true);
+            const [userName, setUserName] = useState('Usuario');
+            const [editingName, setEditingName] = useState(false);
+            const [tempName, setTempName] = useState('');
 
-            // Firebase Refs
-            const authRef = useRef(null);
-            const dbRef = useRef(null);
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'finanzas-zen-app';
-
-            // 1. Init Firebase
+            // Cargar desde localStorage
             useEffect(() => {
-                const initFirebase = async () => {
-                    if (!window.firebaseModules) return;
-                    const { initializeApp, getAuth, getFirestore, signInWithCustomToken, signInAnonymously, onAuthStateChanged } = window.firebaseModules;
-                    
-                    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                    if (!firebaseConfig.apiKey) {
-                        console.error("No Firebase config found"); 
-                        setLoading(false);
-                        return;
-                    }
-
-                    const app = initializeApp(firebaseConfig);
-                    authRef.current = getAuth(app);
-                    dbRef.current = getFirestore(app);
-
-                    // Auth Flow
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(authRef.current, __initial_auth_token);
-                    } else {
-                        // Keep manual login, but handle domain errors in the handler
-                    }
-
-                    onAuthStateChanged(authRef.current, (u) => {
-                        setUser(u);
-                        setLoading(false);
-                    });
-                };
-                initFirebase();
+                const savedTx = localStorage.getItem('finanzas_transactions');
+                const savedCats = localStorage.getItem('finanzas_categories');
+                const savedName = localStorage.getItem('finanzas_userName');
+                if (savedTx) setTransactions(JSON.parse(savedTx));
+                if (savedCats) setCategories(JSON.parse(savedCats));
+                if (savedName) setUserName(savedName);
             }, []);
 
-            // 2. Data Listeners
+            // Guardar en localStorage
             useEffect(() => {
-                if (!user || !dbRef.current) return;
-                const { collection, onSnapshot, doc, getDoc, setDoc } = window.firebaseModules;
+                localStorage.setItem('finanzas_transactions', JSON.stringify(transactions));
+                localStorage.setItem('finanzas_categories', JSON.stringify(categories));
+                localStorage.setItem('finanzas_userName', userName);
+            }, [transactions, categories, userName]);
 
-                // Listen Transactions
-                const txCol = collection(dbRef.current, 'artifacts', appId, 'users', user.uid, 'transactions');
-                const unsubTx = onSnapshot(txCol, (snapshot) => {
-                    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                    // Ordenar por fecha descendente en cliente
-                    data.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    setTransactions(data);
-                }, (err) => console.error("Tx Error", err));
+            const startEditName = () => {
+                setTempName(userName);
+                setEditingName(true);
+            };
 
-                // Listen Settings (Categories)
-                const settingsDoc = doc(dbRef.current, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
-                const unsubSettings = onSnapshot(settingsDoc, (snap) => {
-                    if (snap.exists()) {
-                        const data = snap.data();
-                        if (data.categories) setCategories(data.categories);
-                    } else {
-                        // Init defaults if empty
-                        setDoc(settingsDoc, { categories: DEFAULT_CATEGORIES }, { merge: true });
-                    }
-                }, (err) => console.error("Settings Error", err));
+            const saveName = () => {
+                if (tempName.trim()) setUserName(tempName.trim());
+                setEditingName(false);
+            };
 
-                return () => {
-                    unsubTx();
-                    unsubSettings();
-                };
-            }, [user]);
+            const addTransaction = (data) => {
+                data.id = crypto.randomUUID();
+                setTransactions([data, ...transactions]);
+                setView('dashboard');
+            };
 
-            // --- Handlers ---
-            const handleLogin = async () => {
-                const { signInWithPopup, GoogleAuthProvider, signInAnonymously } = window.firebaseModules;
-                const provider = new GoogleAuthProvider();
-                try {
-                    await signInWithPopup(authRef.current, provider);
-                } catch (error) {
-                    console.error("Login failed", error);
-                    if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/operation-not-allowed') {
-                        // Fallback for preview environment
-                        alert("Modo Vista Previa: El dominio no está autorizado para Google Auth. Iniciando como Invitado para que puedas probar la app.");
-                        await signInAnonymously(authRef.current);
-                    } else {
-                        alert("Error al iniciar sesión: " + error.message);
-                    }
+            const deleteTransaction = (id) => {
+                if (confirm("¿Borrar este movimiento?")) {
+                    setTransactions(transactions.filter(t => t.id !== id));
                 }
             };
 
-            const handleLogout = () => {
-                window.firebaseModules.signOut(authRef.current);
-            };
-
-            const addTransaction = async (data) => {
-                const { addDoc, collection } = window.firebaseModules;
-                try {
-                    await addDoc(collection(dbRef.current, 'artifacts', appId, 'users', user.uid, 'transactions'), data);
-                    setView('dashboard');
-                } catch (e) {
-                    alert("Error guardando: " + e.message);
-                }
-            };
-
-            const deleteTransaction = async (id) => {
-                const { deleteDoc, doc } = window.firebaseModules;
-                if(confirm("¿Borrar este movimiento?")) {
-                    await deleteDoc(doc(dbRef.current, 'artifacts', appId, 'users', user.uid, 'transactions', id));
-                }
-            };
-
-            const updateCategories = async (newCats) => {
-                const { setDoc, doc } = window.firebaseModules;
-                await setDoc(doc(dbRef.current, 'artifacts', appId, 'users', user.uid, 'settings', 'config'), { 
-                    categories: newCats 
-                }, { merge: true });
-            };
-
-            // --- Renders ---
-            if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 text-slate-400 animate-pulse">Cargando Zen...</div>;
-
-            if (!user) return <LoginScreen onLogin={handleLogin} />;
+            const updateCategories = (newCats) => setCategories(newCats);
 
             return (
-                <div className="flex h-screen bg-slate-50 text-slate-800 overflow-hidden font-sans">
-                    <Sidebar view={view} setView={setView} onLogout={handleLogout} user={user} />
-                    
-                    <main className="flex-1 overflow-y-auto relative">
-                        {view === 'dashboard' && (
-                            <Dashboard 
-                                transactions={transactions} 
-                                onDelete={deleteTransaction} 
-                                setView={setView} 
-                            />
-                        )}
-                        {view === 'entry' && (
-                            <EntryForm 
-                                categories={categories} 
-                                onSubmit={addTransaction} 
-                                onCancel={() => setView('dashboard')} 
-                            />
-                        )}
-                        {view === 'categories' && (
-                            <CategoryManager 
-                                categories={categories} 
-                                onUpdate={updateCategories} 
-                            />
-                        )}
+                <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+                    <Sidebar 
+                        view={view} 
+                        setView={setView} 
+                        userName={userName}
+                        editingName={editingName}
+                        tempName={tempName}
+                        setTempName={setTempName}
+                        startEditName={startEditName}
+                        saveName={saveName}
+                        setEditingName={setEditingName}
+                    />
+                    <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+                        {view === 'dashboard' && <Dashboard transactions={transactions} onDelete={deleteTransaction} setView={setView} userName={userName} />}
+                        {view === 'entry' && <EntryForm categories={categories} onSubmit={addTransaction} onCancel={() => setView('dashboard')} />}
+                        {view === 'categories' && <CategoryManager categories={categories} onUpdate={updateCategories} setView={setView} />}
                     </main>
                 </div>
             );
         }
 
-        // --- Sub-Components ---
-
-        function LoginScreen({ onLogin }) {
-            return (
-                <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
-                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center space-y-6 slide-up">
-                        <div className="w-16 h-16 bg-emerald-500 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
-                            <Icons.Wallet size={32} />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-slate-900 mb-2">Finanzas Zen Cloud</h1>
-                            <p className="text-slate-500">Tus finanzas, simplificadas y seguras en la nube.</p>
-                        </div>
-                        <button 
-                            onClick={onLogin}
-                            className="w-full py-4 px-6 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center justify-center gap-3 transition-all shadow-sm hover:shadow-md"
-                        >
-                            <span className="text-xl">G</span> <span>Continuar con Google</span>
-                        </button>
-                        <p className="text-xs text-slate-400">
-                            En este entorno de prueba, es posible que se use el modo Invitado si el dominio no está autorizado.
-                        </p>
-                    </div>
-                </div>
-            );
-        }
-
-        function Sidebar({ view, setView, onLogout, user }) {
+        // Componentes (mantengo tu diseño limpio)
+        function Sidebar({ view, setView, userName, editingName, tempName, setTempName, startEditName, saveName, setEditingName }) {
             const MenuBtn = ({ id, icon: IconC, label }) => (
-                <button 
-                    onClick={() => setView(id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${view === id ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}
-                >
+                <button onClick={() => setView(id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${view === id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
                     <IconC size={20} /> {label}
                 </button>
             );
 
-            // Safer logic for user initials
-            const userInitial = (user.email || user.displayName || 'U')[0].toUpperCase();
-
             return (
-                <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col p-6 z-20 shadow-sm">
-                    <div className="flex items-center gap-3 mb-10 pl-2">
-                        <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white">
-                            <span className="font-bold text-lg">$</span>
+                <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-10">
+                        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                            <Icons.User size={24} />
                         </div>
                         <div>
-                            <h1 className="font-bold text-slate-900 leading-none">Finanzas</h1>
-                            <span className="text-[10px] font-bold text-emerald-500 tracking-wider uppercase">Cloud</span>
+                            <h1 className="text-xl font-bold text-slate-900">Finanzas Zen</h1>
                         </div>
                     </div>
-                    
+
                     <nav className="flex-1 space-y-2">
                         <MenuBtn id="dashboard" icon={Icons.Dashboard} label="Dashboard" />
                         <MenuBtn id="entry" icon={Icons.Plus} label="Nuevo Movimiento" />
                         <MenuBtn id="categories" icon={Icons.List} label="Categorías" />
                     </nav>
 
-                    <div className="pt-6 border-t border-slate-100 mt-auto">
-                        <div className="flex items-center gap-3 mb-4 px-2">
-                            <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
-                                {user.photoURL ? <img src={user.photoURL} alt="User" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-500">{userInitial}</div>}
+                    <div className="pt-6 border-t border-slate-100">
+                        <div className="flex items-center gap-3 px-2">
+                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold">
+                                {userName[0].toUpperCase()}
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-slate-800 truncate">{user.displayName || 'Usuario'}</p>
-                                <p className="text-xs text-slate-400 truncate">{user.email || 'Invitado'}</p>
+                            <div className="flex-1">
+                                {editingName ? (
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="text" 
+                                            value={tempName} 
+                                            onChange={(e) => setTempName(e.target.value)}
+                                            className="px-2 py-1 border border-slate-300 rounded-lg text-sm"
+                                            autoFocus
+                                        />
+                                        <button onClick={saveName}><Icons.Check size={18} className="text-emerald-500" /></button>
+                                        <button onClick={() => setEditingName(false)} className="text-slate-400">✕</button>
+                                    </div>
+                                ) : (
+                                    <p onClick={startEditName} className="font-bold text-slate-800 cursor-pointer hover:text-slate-600">
+                                        {userName}
+                                    </p>
+                                )}
+                                <p className="text-xs text-slate-400">Click para editar</p>
                             </div>
                         </div>
-                        <button onClick={onLogout} className="flex items-center gap-2 text-xs font-bold text-rose-500 hover:text-rose-600 px-2">
-                            <Icons.LogOut size={14} /> Cerrar Sesión
-                        </button>
                     </div>
                 </aside>
             );
         }
 
-        function Dashboard({ transactions, onDelete, setView }) {
+        function Dashboard({ transactions, onDelete, setView, userName }) {
             const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-            
             const filtered = useMemo(() => transactions.filter(t => t.date.startsWith(month)), [transactions, month]);
-            
+
             const totals = useMemo(() => {
                 const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
                 const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -330,87 +180,69 @@
             }, [filtered]);
 
             return (
-                <div className="p-6 max-w-5xl mx-auto space-y-8 fade-in pb-24 md:pb-6">
-                    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="p-6 max-w-5xl mx-auto space-y-8 fade-in">
+                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-800">Resumen Mensual</h2>
-                            <p className="text-slate-500 text-sm">Visualiza el flujo de tu dinero.</p>
+                            <h2 className="text-2xl font-bold text-slate-800">¡Hola, {userName}!</h2>
+                            <p className="text-slate-500">Resumen del mes</p>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <input 
-                                type="month" 
-                                value={month} 
-                                onChange={(e) => setMonth(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
-                            />
-                            <button onClick={() => setView('entry')} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-slate-200 hover:bg-slate-800 transition-colors flex items-center gap-2">
-                                <Icons.Plus size={16} /> Nuevo
+                        <div className="flex items-center gap-4 w-full md:w-auto">
+                            <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="flex-1 md:flex-initial bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm" />
+                            <button onClick={() => setView('entry')} className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-slate-800">
+                                <Icons.Plus size={18} /> Nuevo
                             </button>
                         </div>
                     </header>
 
-                    {/* KPIs */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                            <p className="text-sm font-medium text-emerald-600 mb-1">Ingresos</p>
-                            <p className="text-3xl font-bold text-slate-900">+{formatMoney(totals.income, 'ARS')}</p>
+                            <p className="text-sm text-emerald-600 font-medium">Ingresos</p>
+                            <p className="text-3xl font-bold">+{formatMoney(totals.income, 'ARS')}</p>
                         </div>
                         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                            <p className="text-sm font-medium text-rose-600 mb-1">Gastos</p>
-                            <p className="text-3xl font-bold text-slate-900">-{formatMoney(totals.expense, 'ARS')}</p>
+                            <p className="text-sm text-rose-600 font-medium">Gastos</p>
+                            <p className="text-3xl font-bold">-{formatMoney(totals.expense, 'ARS')}</p>
                         </div>
-                        <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-xl shadow-slate-200">
-                            <p className="text-sm font-medium text-slate-400 mb-1">Balance</p>
+                        <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-xl">
+                            <p className="text-sm text-slate-300 font-medium">Balance</p>
                             <p className="text-3xl font-bold">{formatMoney(totals.balance, 'ARS')}</p>
                         </div>
                     </div>
 
-                    {/* Tabla Detallada */}
                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-800">Movimientos del mes</h3>
-                            <span className="text-xs font-medium text-slate-400">{filtered.length} registros</span>
+                        <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100">
+                            <h3 className="font-bold text-slate-800">Movimientos del mes ({filtered.length})</h3>
                         </div>
-                        
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                            <table className="w-full text-sm">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-50">
                                     <tr>
-                                        <th className="px-6 py-3 font-medium">Fecha</th>
-                                        <th className="px-6 py-3 font-medium">Categoría / Detalle</th>
-                                        <th className="px-6 py-3 font-medium">Método</th>
-                                        <th className="px-6 py-3 font-medium text-right">Monto</th>
+                                        <th className="px-6 py-3 text-left">Fecha</th>
+                                        <th className="px-6 py-3 text-left">Categoría / Detalle</th>
+                                        <th className="px-6 py-3 text-left">Método</th>
+                                        <th className="px-6 py-3 text-right">Monto</th>
                                         <th className="px-6 py-3 text-center"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {filtered.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="5" className="text-center py-12 text-slate-400 italic">
-                                                No hay movimientos en este mes. <br/>
-                                                <button onClick={() => setView('entry')} className="text-emerald-500 font-bold hover:underline mt-2">Crear el primero</button>
-                                            </td>
-                                        </tr>
+                                        <tr><td colSpan="5" className="text-center py-12 text-slate-400">Sin movimientos. <button onClick={() => setView('entry')} className="text-emerald-500 font-bold hover:underline">Agregar uno</button></td></tr>
                                     ) : (
                                         filtered.map(t => (
-                                            <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                                                <td className="px-6 py-4 text-slate-500 whitespace-nowrap">
-                                                    {new Date(t.date).toLocaleDateString('es-AR', {day: '2-digit', month: 'short'})}
+                                            <tr key={t.id} className="hover:bg-slate-50">
+                                                <td className="px-6 py-4 text-slate-500">{new Date(t.date).toLocaleDateString('es-AR', {day: 'numeric', month: 'short'})}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold">{t.category}</div>
+                                                    <div className="text-xs text-slate-400">{t.detail || '-'}</div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="font-bold text-slate-700">{t.category}</div>
-                                                    <div className="text-xs text-slate-400 truncate max-w-[200px]">{t.detail || '-'}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                                                        {t.paymentMethod || 'Efectivo'}
-                                                    </span>
+                                                    <span className="px-2.5 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">{t.paymentMethod || 'Efectivo'}</span>
                                                 </td>
                                                 <td className={`px-6 py-4 text-right font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount, t.currency)}
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    <button onClick={() => onDelete(t.id)} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all">
+                                                    <button onClick={() => onDelete(t.id)} className="text-slate-300 hover:text-rose-500">
                                                         <Icons.Trash size={16} />
                                                     </button>
                                                 </td>
@@ -428,7 +260,7 @@
         function EntryForm({ categories, onSubmit, onCancel }) {
             const [amount, setAmount] = useState('');
             const [type, setType] = useState('expense');
-            const [category, setCategory] = useState(categories[0] || 'Varios');
+            const [category, setCategory] = useState(categories[0]);
             const [detail, setDetail] = useState('');
             const [paymentMethod, setPaymentMethod] = useState('Efectivo');
             const [currency, setCurrency] = useState('ARS');
@@ -436,78 +268,67 @@
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                if(!amount) return;
+                if (!amount || parseFloat(amount) <= 0) return;
                 onSubmit({
                     amount: parseFloat(amount),
                     type,
                     category: type === 'income' ? 'Ingreso' : category,
-                    detail,
+                    detail: detail.trim(),
                     paymentMethod,
                     currency,
-                    date,
-                    createdAt: new Date().toISOString()
+                    date
                 });
             };
 
             return (
-                <div className="max-w-lg mx-auto py-10 px-4 slide-up pb-24 md:pb-10">
-                    <button onClick={onCancel} className="mb-6 text-sm font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1">
-                        ← Volver
-                    </button>
-                    <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8">
-                        <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">Nuevo Movimiento</h2>
-                        
+                <div className="max-w-lg mx-auto py-10 px-4 slide-up">
+                    <button onClick={onCancel} className="mb-6 text-sm font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1">← Volver</button>
+                    <div className="bg-white rounded-3xl shadow-xl p-8">
+                        <h2 className="text-2xl font-bold text-center mb-6">Nuevo Movimiento</h2>
                         <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
-                            <button onClick={() => setType('expense')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${type === 'expense' ? 'bg-white shadow text-rose-600' : 'text-slate-500'}`}>Egreso</button>
-                            <button onClick={() => setType('income')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${type === 'income' ? 'bg-white shadow text-emerald-600' : 'text-slate-500'}`}>Ingreso</button>
+                            <button onClick={() => setType('expense')} className={`flex-1 py-2 rounded-lg font-bold text-sm ${type === 'expense' ? 'bg-white shadow text-rose-600' : 'text-slate-500'}`}>Egreso</button>
+                            <button onClick={() => setType('income')} className={`flex-1 py-2 rounded-lg font-bold text-sm ${type === 'income' ? 'bg-white shadow text-emerald-600' : 'text-slate-500'}`}>Ingreso</button>
                         </div>
-
                         <form onSubmit={handleSubmit} className="space-y-5">
-                            {/* Monto */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Monto</label>
                                 <div className="flex gap-2">
                                     <div className="relative flex-1">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold text-lg">$</span>
-                                        <input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 font-mono text-2xl font-bold text-slate-800" required autoFocus />
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-slate-300">$</span>
+                                        <input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-2xl font-bold" required autoFocus />
                                     </div>
-                                    <select value={currency} onChange={e => setCurrency(e.target.value)} className="px-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700">
-                                        <option value="ARS">ARS</option>
-                                        <option value="USD">USD</option>
+                                    <select value={currency} onChange={e => setCurrency(e.target.value)} className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold">
+                                        <option>ARS</option>
+                                        <option>USD</option>
                                     </select>
                                 </div>
                             </div>
-
-                            {/* Detalle y Fecha */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Detalle (Opcional)</label>
-                                    <input type="text" value={detail} onChange={e => setDetail(e.target.value)} placeholder="Ej: Cena con amigos..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700" />
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Detalle (opcional)</label>
+                                    <input type="text" value={detail} onChange={e => setDetail(e.target.value)} placeholder="Ej: Supermercado..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Fecha</label>
-                                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm" required />
+                                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" required />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Método Pago</label>
-                                    <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm">
-                                        {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Método</label>
+                                    <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                        {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
                                     </select>
                                 </div>
                             </div>
-
-                            {/* Categoría */}
                             {type === 'expense' && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Categoría</label>
-                                    <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700">
-                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                        {categories.map(c => <option key={c}>{c}</option>)}
                                     </select>
                                 </div>
                             )}
-
-                            <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all mt-4">
-                                Guardar
+                            <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg shadow-xl hover:bg-slate-800 mt-6">
+                                Guardar Movimiento
                             </button>
                         </form>
                     </div>
@@ -515,46 +336,37 @@
             );
         }
 
-        function CategoryManager({ categories, onUpdate }) {
+        function CategoryManager({ categories, onUpdate, setView }) {
             const [newCat, setNewCat] = useState('');
 
             const add = (e) => {
                 e.preventDefault();
-                if(newCat.trim() && !categories.includes(newCat.trim())) {
+                if (newCat.trim() && !categories.includes(newCat.trim())) {
                     onUpdate([...categories, newCat.trim()]);
                     setNewCat('');
                 }
             };
 
             const remove = (cat) => {
-                if(confirm(`¿Eliminar categoría "${cat}"?`)) {
+                if (confirm(`¿Eliminar "${cat}"?`)) {
                     onUpdate(categories.filter(c => c !== cat));
                 }
             };
 
             return (
-                <div className="max-w-2xl mx-auto py-10 px-6 fade-in pb-24 md:pb-10">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Gestionar Categorías</h2>
-                    <p className="text-slate-500 mb-8">Personaliza las opciones para tus gastos.</p>
-
+                <div className="max-w-2xl mx-auto py-10 px-6 fade-in">
+                    <button onClick={() => setView('dashboard')} className="mb-6 text-sm font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1">← Volver</button>
+                    <h2 className="text-2xl font-bold mb-2">Categorías</h2>
+                    <p className="text-slate-500 mb-8">Personalizá tus categorías de gastos</p>
                     <form onSubmit={add} className="flex gap-2 mb-8">
-                        <input 
-                            type="text" 
-                            value={newCat} 
-                            onChange={e => setNewCat(e.target.value)} 
-                            placeholder="Nueva categoría..." 
-                            className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-slate-900"
-                        />
-                        <button type="submit" className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800">
-                            Agregar
-                        </button>
+                        <input type="text" value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="Nueva categoría..." className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm" />
+                        <button type="submit" className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800">Agregar</button>
                     </form>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {categories.map(cat => (
-                            <div key={cat} className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-100 shadow-sm group hover:border-slate-300 transition-all">
-                                <span className="font-medium text-slate-700">{cat}</span>
-                                <button onClick={() => remove(cat)} className="text-slate-300 hover:text-rose-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div key={cat} className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:border-slate-300 group">
+                                <span className="font-medium">{cat}</span>
+                                <button onClick={() => remove(cat)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100">
                                     <Icons.Trash size={18} />
                                 </button>
                             </div>
